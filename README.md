@@ -1,5 +1,5 @@
 # terra_incognito
 
-
+https://trbaker.github.io/terra_incognito/
 
 **Terra Incognita: The Cartographers' Guild** is a live, multiplayer review game for AP Human Geography in which students play rival cartographers racing to decode "field dispatches" — location clues written entirely in course vocabulary (site and situation, primate cities, exclaves, the Green Revolution, forward capitals, and more). Each round, students read the dispatch, drop a pin on a real Esri/ArcGIS world map where they believe it points, and answer a linked multiple-choice concept question before a 90-second compass timer runs out; points reward pin accuracy, speed, and conceptual understanding. The reveal screen then shows the true location, every student's guess with distance lines, and a brief explanation tying the place back to the concept — a natural moment for whole-class discussion. Teachers host from a projector-friendly screen, students join from any device with a 4-letter room code, and games can be tuned to 5, 7, or 10 rounds covering either mixed review or a single CED unit (Units 1–7), with a question bank spanning all seven. Multiple class periods or table groups can run separate games simultaneously, making it an easy 15–20 minute warm-up, unit review, or exam prep activity with no student accounts required.
