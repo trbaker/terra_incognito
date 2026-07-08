@@ -6,6 +6,7 @@
 <title>Terra Incognita — The Cartographers' Guild</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --deep:#12303A; --deeper:#0B2129; --paper:#EFE7D3; --paper2:#E5DBC2;
@@ -158,7 +159,7 @@ tr.me td{background:rgba(185,138,47,.16)}
   </header>
 
   <div id="storage-banner" class="banner hidden">
-    Shared multiplayer storage isn't available in this preview — running in solo practice mode. Publish or open the artifact on claude.ai to play with a class.
+    Supabase isn't configured — running in solo practice mode. Add your project URL and anon key at the top of the script to enable live multiplayer rooms.
   </div>
 
   <!-- ================= HOME ================= -->
@@ -212,7 +213,7 @@ tr.me td{background:rgba(185,138,47,.16)}
   <!-- ================= HOST LOBBY ================= -->
   <section id="scr-lobby" class="hidden">
     <div class="card">
-      <p class="sub" style="text-align:center">Students join at this artifact with the code:</p>
+      <p class="sub" style="text-align:center">Students open this page and join with the code:</p>
       <div class="big-code" id="lobby-code">····</div>
       <hr class="rule"/>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -454,15 +455,57 @@ const TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Top
 const TILE_ATTR = 'Tiles © Esri — Esri, HERE, Garmin, FAO, NOAA, USGS';
 const CITIES_QUERY = 'https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/0/query';
 
-/* ---------------- Storage layer (shared, with solo fallback) ---------------- */
+/* ---------------- Storage layer: Supabase (with solo fallback) ----------------
+   Setup: create a Supabase project, run the SQL in the README comment below,
+   then paste your project URL and anon (public) key here.
+
+   create table if not exists ti_store (
+     key text primary key,
+     value text not null,
+     updated_at timestamptz not null default now()
+   );
+   alter table ti_store enable row level security;
+   create policy "public read"   on ti_store for select using (true);
+   create policy "public insert" on ti_store for insert with check (true);
+   create policy "public update" on ti_store for update using (true);
+-------------------------------------------------------------------------------- */
+const SUPABASE_URL = 'https://dchovdwsvzacmbsdygrz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Vm7xumfNaObjGL-yP2EvtQ_kG__2NRT';
+const STORE_TABLE = 'ti_store';
+
 const mem = {};
-let soloMode = !(window.storage && window.storage.get);
-async function sGet(k){ if(soloMode){return mem[k]!==undefined?{key:k,value:mem[k]}:null;}
-  try{ return await window.storage.get(k,true); }catch(e){ return null; } }
-async function sSet(k,v){ if(soloMode){mem[k]=v;return {key:k};}
-  try{ return await window.storage.set(k,v,true); }catch(e){ console.error('set fail',e); return null; } }
-async function sList(pfx){ if(soloMode){return {keys:Object.keys(mem).filter(k=>k.startsWith(pfx))};}
-  try{ return await window.storage.list(pfx,true) || {keys:[]}; }catch(e){ return {keys:[]}; } }
+let sb = null, soloMode = true;
+try{
+  if(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase){
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    soloMode = false;
+  }
+}catch(e){ console.error('Supabase init failed', e); }
+
+async function sGet(k){
+  if(soloMode){ return mem[k]!==undefined ? {key:k,value:mem[k]} : null; }
+  try{
+    const {data,error} = await sb.from(STORE_TABLE).select('value').eq('key',k).maybeSingle();
+    if(error || !data) return null;
+    return {key:k, value:data.value};
+  }catch(e){ return null; }
+}
+async function sSet(k,v){
+  if(soloMode){ mem[k]=v; return {key:k}; }
+  try{
+    const {error} = await sb.from(STORE_TABLE)
+      .upsert({key:k, value:v, updated_at:new Date().toISOString()});
+    if(error){ console.error('set fail',error); return null; }
+    return {key:k};
+  }catch(e){ console.error('set fail',e); return null; }
+}
+async function sList(pfx){
+  if(soloMode){ return {keys:Object.keys(mem).filter(k=>k.startsWith(pfx))}; }
+  try{
+    const {data,error} = await sb.from(STORE_TABLE).select('key').like('key',pfx+'%');
+    return {keys: error ? [] : (data||[]).map(r=>r.key)};
+  }catch(e){ return {keys:[]}; }
+}
 
 /* ---------------- App state ---------------- */
 let role=null, room=null, pid=null, myName=null, myColor=null, hostPlays=false;
