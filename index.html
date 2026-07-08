@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Terra Incognita — The Cartographers' Guild</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{
+  --deep:#12303A; --deeper:#0B2129; --paper:#EFE7D3; --paper2:#E5DBC2;
+  --ink:#23333C; --ink-soft:#5A6A70; --brass:#B98A2F; --brass-bright:#D9A93E;
+  --teal:#2F7A6B; --coral:#C4553B; --line:rgba(35,51,60,.22);
+  --serif:'Palatino Linotype','Iowan Old Style','Book Antiqua',Palatino,Georgia,serif;
+  --mono:ui-monospace,'Cascadia Mono','Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--deeper);color:var(--paper);font-family:var(--serif);font-size:16px;line-height:1.45;
+  background-image:radial-gradient(ellipse at 50% -20%, #1A4250 0%, var(--deeper) 62%)}
+button{font-family:var(--serif);cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--brass-bright);outline-offset:2px}
+input,select{font-family:var(--serif);font-size:1rem}
+.hidden{display:none !important}
+
+/* ---------- shells ---------- */
+.screen{max-width:1200px;margin:0 auto;padding:20px}
+header.bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:2px solid var(--brass);
+  padding:10px 4px 12px;margin-bottom:16px}
+header.bar h1{font-size:1.15rem;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+.badge{font-family:var(--mono);font-size:.8rem;letter-spacing:.12em;border:1px solid var(--brass);
+  color:var(--brass-bright);padding:3px 10px;border-radius:999px}
+.spacer{flex:1}
+.tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--brass-bright)}
+
+/* ---------- paper cards ---------- */
+.card{background:var(--paper);color:var(--ink);border-radius:6px;padding:20px;
+  box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(35,51,60,.15);
+  background-image:
+    linear-gradient(rgba(35,51,60,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(35,51,60,.05) 1px, transparent 1px);
+  background-size:36px 36px}
+.card h2{font-size:1.35rem;margin-bottom:6px}
+.card .sub{color:var(--ink-soft);font-size:.92rem}
+.rule{border:none;border-top:1px solid var(--line);margin:14px 0}
+
+.btn{border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:11px 20px;
+  border-radius:4px;font-size:1rem;letter-spacing:.03em}
+.btn:hover{background:#31454f}
+.btn.brass{background:var(--brass);border-color:var(--brass);color:#1d1607;font-weight:700}
+.btn.brass:hover{background:var(--brass-bright)}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:rgba(35,51,60,.08)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.small{padding:6px 12px;font-size:.85rem}
+
+.field{margin:12px 0}
+.field label{display:block;font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px}
+.field input,.field select{width:100%;padding:10px 12px;border:1px solid var(--ink);border-radius:4px;
+  background:#fbf7ec;color:var(--ink)}
+.code-input{font-family:var(--mono) !important;text-transform:uppercase;letter-spacing:.4em;font-size:1.3rem !important;text-align:center}
+
+/* ---------- home ---------- */
+.home-hero{text-align:center;padding:44px 12px 26px}
+.home-hero .over{font-family:var(--mono);letter-spacing:.3em;font-size:.75rem;color:var(--brass-bright);text-transform:uppercase}
+.home-hero h1{font-size:clamp(2.1rem,6vw,3.6rem);line-height:1.05;margin:12px 0 10px;font-weight:600}
+.home-hero h1 em{font-style:italic;color:var(--brass-bright)}
+.home-hero p{max-width:620px;margin:0 auto;color:#cfd8d4}
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:26px}
+@media(max-width:760px){.home-grid{grid-template-columns:1fr}}
+.units-strip{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:22px}
+.units-strip span{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;color:#9fb4ae;
+  border:1px solid rgba(185,138,47,.45);padding:3px 9px;border-radius:999px}
+
+/* ---------- lobby ---------- */
+.big-code{font-family:var(--mono);font-size:clamp(2.4rem,9vw,4.2rem);letter-spacing:.35em;
+  color:var(--brass-bright);text-align:center;padding:10px 0 4px}
+.roster{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{display:inline-flex;align-items:center;gap:7px;background:#fbf7ec;border:1px solid var(--line);
+  border-radius:999px;padding:5px 12px;font-size:.9rem}
+.dot{width:11px;height:11px;border-radius:50%;display:inline-block;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+
+/* ---------- round layout ---------- */
+.round-grid{display:grid;grid-template-columns:380px 1fr;gap:16px;align-items:start}
+@media(max-width:900px){.round-grid{grid-template-columns:1fr}}
+#map{height:560px;border-radius:6px;border:2px solid var(--brass);box-shadow:0 10px 30px rgba(0,0,0,.4)}
+@media(max-width:900px){#map{height:420px}}
+.dispatch .stamp{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--paper);background:var(--teal);padding:3px 10px;border-radius:3px}
+.dispatch h2{margin-top:10px}
+.clue{font-size:1.04rem;margin-top:8px}
+.coords{font-family:var(--mono);font-size:.82rem;color:var(--ink-soft);margin-top:10px}
+.mcq{margin-top:14px}
+.mcq .q{font-weight:700;margin-bottom:8px}
+.opt{display:block;width:100%;text-align:left;background:#fbf7ec;border:1px solid var(--ink);
+  border-radius:4px;padding:9px 12px;margin:6px 0;font-size:.95rem;color:var(--ink)}
+.opt:hover{background:#f1e9d3}
+.opt.sel{background:var(--ink);color:var(--paper)}
+.opt.right{background:var(--teal);border-color:var(--teal);color:#fff}
+.opt.wrong{background:var(--coral);border-color:var(--coral);color:#fff}
+
+/* compass countdown — the signature */
+.compass-wrap{display:flex;align-items:center;gap:12px;margin-top:6px}
+.compass{width:74px;height:74px;flex:0 0 auto}
+.compass .track{fill:none;stroke:rgba(35,51,60,.18);stroke-width:6}
+.compass .sweep{fill:none;stroke:var(--brass);stroke-width:6;stroke-linecap:round;
+  transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset 1s linear}
+.compass text{font-family:var(--mono);font-size:15px;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.compass .needle{fill:var(--coral)}
+.compass-label{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.compass.low .sweep{stroke:var(--coral)}
+
+/* leaderboard */
+table.lb{width:100%;border-collapse:collapse;margin-top:8px}
+table.lb th{font-family:var(--mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-soft);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+table.lb td{padding:7px 8px;border-bottom:1px solid var(--line);font-size:.95rem}
+table.lb td.num{font-family:var(--mono);text-align:right}
+tr.me td{background:rgba(185,138,47,.16)}
+
+/* reveal */
+.reveal-place{font-size:1.5rem;font-weight:700}
+.explain{background:#fbf7ec;border-left:4px solid var(--brass);padding:10px 14px;margin-top:12px;font-size:.96rem}
+.score-pop{font-family:var(--mono);font-size:1.6rem;color:var(--teal);font-weight:700}
+
+/* map pin */
+.pin{width:20px;height:20px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+  border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.pin.target{border-radius:50%;transform:none;background:var(--brass-bright);
+  box-shadow:0 0 0 5px rgba(217,169,62,.35),0 2px 6px rgba(0,0,0,.5)}
+.leaflet-container{font-family:var(--serif)}
+
+.note{font-family:var(--mono);font-size:.75rem;color:#9fb4ae;margin-top:10px}
+.banner{background:var(--coral);color:#fff;padding:8px 14px;border-radius:4px;margin-bottom:14px;font-size:.9rem}
+.host-stats{display:flex;gap:20px;flex-wrap:wrap;margin-top:8px}
+.host-stats .stat b{display:block;font-family:var(--mono);font-size:1.5rem}
+.host-stats .stat span{font-family:var(--mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.podium{display:flex;gap:14px;justify-content:center;align-items:flex-end;margin:22px 0}
+.podium .col{text-align:center}
+.podium .block{background:var(--brass);color:#1d1607;border-radius:4px 4px 0 0;display:flex;
+  align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:1.3rem;min-width:96px}
+.podium .p1 .block{height:110px;background:var(--brass-bright)}
+.podium .p2 .block{height:80px}
+.podium .p3 .block{height:58px;background:#8f6a24}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body>
+
+<div class="screen">
+  <header class="bar">
+    <h1>Terra Incognita</h1>
+    <span class="tag">The Cartographers' Guild · AP Human Geography</span>
+    <span class="spacer"></span>
+    <span id="hdr-room" class="badge hidden"></span>
+    <span id="hdr-round" class="badge hidden"></span>
+  </header>
+
+  <div id="storage-banner" class="banner hidden">
+    Shared multiplayer storage isn't available in this preview — running in solo practice mode. Publish or open the artifact on claude.ai to play with a class.
+  </div>
+
+  <!-- ================= HOME ================= -->
+  <section id="scr-home">
+    <div class="home-hero">
+      <div class="over">Field dispatches · Live expeditions · One world map</div>
+      <h1>Chart the world.<br/><em>Prove the concept.</em></h1>
+      <p>Each round, your guild receives a dispatch written in the language of AP Human Geography. Decode it, drop your pin on the ArcGIS world map, and lock in the concept question before the compass runs out.</p>
+      <div class="units-strip">
+        <span>U1 Maps &amp; Spatial Thinking</span><span>U2 Population &amp; Migration</span>
+        <span>U3 Culture</span><span>U4 Political Geography</span>
+        <span>U5 Agriculture</span><span>U6 Cities &amp; Urban Land Use</span>
+        <span>U7 Industry &amp; Development</span>
+      </div>
+    </div>
+    <div class="home-grid">
+      <div class="card">
+        <h2>Charter an expedition</h2>
+        <p class="sub">For teachers or student hosts. You'll get a 4-letter code and run the rounds from a projector-friendly view.</p>
+        <div class="field"><label for="set-rounds">Rounds</label>
+          <select id="set-rounds"><option value="5">5 rounds (~12 min)</option><option value="7" selected>7 rounds (~16 min)</option><option value="10">10 rounds (~22 min)</option></select></div>
+        <div class="field"><label for="set-unit">Dispatch focus</label>
+          <select id="set-unit">
+            <option value="0" selected>All units (mixed review)</option>
+            <option value="1">Unit 1 · Thinking Geographically</option>
+            <option value="2">Unit 2 · Population &amp; Migration</option>
+            <option value="3">Unit 3 · Cultural Patterns</option>
+            <option value="4">Unit 4 · Political Geography</option>
+            <option value="5">Unit 5 · Agriculture &amp; Rural Land Use</option>
+            <option value="6">Unit 6 · Cities &amp; Urban Land Use</option>
+            <option value="7">Unit 7 · Industrial &amp; Economic Development</option>
+          </select></div>
+        <button class="btn brass" id="btn-host">Create room code</button>
+      </div>
+      <div class="card">
+        <h2>Join an expedition</h2>
+        <p class="sub">Enter the code on the board, sign the guild ledger, and pick your surveyor's mark.</p>
+        <div class="field"><label for="join-code">Room code</label>
+          <input id="join-code" class="code-input" maxlength="4" autocomplete="off" placeholder="····"/></div>
+        <div class="field"><label for="join-name">Cartographer name</label>
+          <input id="join-name" maxlength="16" autocomplete="off" placeholder="e.g. Ibn Battuta II"/></div>
+        <div class="field"><label for="join-color">Surveyor's mark</label>
+          <select id="join-color"></select></div>
+        <button class="btn brass" id="btn-join">Join expedition</button>
+        <p class="note" id="join-err" style="color:var(--coral)"></p>
+      </div>
+    </div>
+    <p class="note" style="text-align:center">Basemap and gazetteer served live from ArcGIS Online REST services (Esri). Many rooms can run at once — every code is its own expedition.</p>
+  </section>
+
+  <!-- ================= HOST LOBBY ================= -->
+  <section id="scr-lobby" class="hidden">
+    <div class="card">
+      <p class="sub" style="text-align:center">Students join at this artifact with the code:</p>
+      <div class="big-code" id="lobby-code">····</div>
+      <hr class="rule"/>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <h2 style="font-size:1.05rem">Guild ledger</h2>
+        <span class="tag" id="lobby-count">0 signed in</span>
+        <span class="spacer"></span>
+        <button class="btn brass" id="btn-start" disabled>Begin round 1</button>
+      </div>
+      <div class="roster" id="lobby-roster"></div>
+      <p class="note">Keep this tab open — the host screen runs the timers and scoring for everyone. Works well on a projector.</p>
+    </div>
+  </section>
+
+  <!-- ================= PLAYER WAIT ================= -->
+  <section id="scr-wait" class="hidden">
+    <div class="card" style="max-width:560px;margin:40px auto;text-align:center">
+      <h2 id="wait-title">You're on the ledger.</h2>
+      <p class="sub" id="wait-sub">Waiting for the host to begin the first dispatch…</p>
+      <div class="roster" id="wait-roster" style="justify-content:center;margin-top:16px"></div>
+    </div>
+  </section>
+
+  <!-- ================= ROUND (shared layout) ================= -->
+  <section id="scr-round" class="hidden">
+    <div class="round-grid">
+      <div class="card dispatch">
+        <span class="stamp" id="r-unit">Unit —</span>
+        <h2 id="r-title">—</h2>
+        <p class="clue" id="r-clue">—</p>
+        <p class="coords" id="r-coords">PIN — not yet placed</p>
+        <div class="compass-wrap">
+          <svg class="compass" id="compass" viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="track" cx="50" cy="50" r="42"/>
+            <circle class="sweep" id="sweep" cx="50" cy="50" r="42"/>
+            <polygon class="needle" points="50,14 46,50 54,50"/>
+            <polygon points="50,86 46,50 54,50" fill="#5A6A70"/>
+            <text x="50" y="50" id="clock">90</text>
+          </svg>
+          <div>
+            <div class="compass-label">Seconds on the compass</div>
+            <div class="sub" id="r-status">Drop a pin, answer the question, then lock in.</div>
+          </div>
+        </div>
+        <div class="mcq" id="r-mcq"></div>
+        <hr class="rule"/>
+        <button class="btn brass" id="btn-lock" disabled>Lock in survey</button>
+        <div class="host-stats hidden" id="host-live">
+          <div class="stat"><b id="hs-sub">0</b><span>surveys locked</span></div>
+          <div class="stat"><b id="hs-total">0</b><span>cartographers</span></div>
+          <button class="btn small ghost" id="btn-endround" style="align-self:center">End round now</button>
+        </div>
+      </div>
+      <div>
+        <div id="map"></div>
+        <p class="note">Basemap: Esri World Topographic Map via ArcGIS REST tile service.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= REVEAL ================= -->
+  <section id="scr-reveal" class="hidden">
+    <div class="round-grid">
+      <div class="card">
+        <span class="stamp" id="v-unit" style="background:var(--brass);color:#1d1607">Unit —</span>
+        <p class="sub" style="margin-top:10px">The dispatch pointed to</p>
+        <div class="reveal-place" id="v-place">—</div>
+        <p class="coords" id="v-nearest"></p>
+        <div class="explain" id="v-explain">—</div>
+        <div id="v-mine" style="margin-top:14px"></div>
+        <hr class="rule"/>
+        <h2 style="font-size:1.05rem">Leaderboard</h2>
+        <table class="lb"><thead><tr><th>#</th><th>Cartographer</th><th style="text-align:right">Round</th><th style="text-align:right">Total</th></tr></thead>
+        <tbody id="v-lb"></tbody></table>
+        <div style="margin-top:14px" id="v-hostbtns" class="hidden">
+          <button class="btn brass" id="btn-next">Next dispatch</button>
+        </div>
+        <p class="sub" id="v-waitnote" style="margin-top:10px">Next dispatch begins when the host advances.</p>
+      </div>
+      <div>
+        <div id="map2" style="height:560px;border-radius:6px;border:2px solid var(--brass)"></div>
+        <p class="note">Gold ring = true location. Colored pins = each guild member's survey.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FINAL ================= -->
+  <section id="scr-final" class="hidden">
+    <div class="card" style="max-width:720px;margin:20px auto;text-align:center">
+      <span class="tag">Expedition complete</span>
+      <h2 style="font-size:1.8rem;margin-top:8px">The charts are drawn.</h2>
+      <div class="podium" id="podium"></div>
+      <table class="lb" style="text-align:left"><thead><tr><th>#</th><th>Cartographer</th><th style="text-align:right">Total</th></tr></thead>
+      <tbody id="f-lb"></tbody></table>
+      <hr class="rule"/>
+      <button class="btn" id="btn-again">Back to the guild hall</button>
+    </div>
+  </section>
+</div>
+
+<script>
+/* =====================================================================
+   TERRA INCOGNITA — multiplayer APHG mapping game
+   Multiplayer model:
+   - Each room = 4-letter code. All keys are namespaced: ti:CODE:*
+   - HOST owns   ti:CODE:state   (phase, round, timers, results, leaderboard)
+   - Each PLAYER owns ti:CODE:p:PID (name, color, answers per round)
+   - Players only poll state (1 read); the host polls player keys and
+     writes computed scores back into state. Last-write-wins is safe
+     because every key has exactly one writer.
+   ===================================================================== */
+
+/* ---------------- Question bank: 28 dispatches, 4 per APHG unit ------------- */
+const UNITS = {1:'Thinking Geographically',2:'Population & Migration',3:'Cultural Patterns & Processes',4:'Political Patterns & Processes',5:'Agriculture & Rural Land Use',6:'Cities & Urban Land Use',7:'Industrial & Economic Development'};
+const QBANK = [
+{u:1,title:'The Crossroads Colony',lat:1.352,lng:103.82,place:'Singapore',
+ clue:'My SITE is a swampy island barely 50 km across, but my SITUATION — astride the busiest maritime choke point between the Indian and Pacific Oceans — made me one of the richest ports on Earth.',
+ q:'In geography, a place\'s "situation" refers to…',opts:['Its physical characteristics, like soil and climate','Its location relative to other places and routes','Its exact latitude and longitude','Its population density'],a:1,
+ why:'Singapore\'s value comes from relative location on the Strait of Malacca — a textbook case of situation outweighing site.'},
+{u:1,title:'Zero Degrees of Separation',lat:51.4779,lng:-0.0015,place:'Greenwich, London, UK',
+ clue:'Every absolute location on the planet is measured east or west of a line through my Royal Observatory. Time zones start their count here too.',
+ q:'A coordinate like 51.48° N, 0° W is an example of…',opts:['Relative location','Absolute location','A vernacular region','Cognitive mapping'],a:1,
+ why:'The Prime Meridian at Greenwich anchors the global grid used for absolute location and for Universal Time.'},
+{u:1,title:'The Shortcut Between Seas',lat:9.08,lng:-79.68,place:'Panama Canal, Panama',
+ clue:'By slicing 82 km across an isthmus, I cut the New York–San Francisco voyage by about 13,000 km — shrinking the "cost" of distance for global trade.',
+ q:'Faster, cheaper connection between distant places is called…',opts:['Distance decay','Time–space compression','Environmental determinism','Spatial mismatch'],a:1,
+ why:'The canal is a classic driver of time–space compression; note that distance decay describes the opposite tendency — interaction weakening with distance.'},
+{u:1,title:'The Island That Lies on Maps',lat:71.7,lng:-42.0,place:'Greenland',
+ clue:'On the classroom wall map I look as big as Africa, yet I could fit inside it 14 times. Find the icy island that projection famously inflates.',
+ q:'Greenland looks enormous on a Mercator map because that projection…',opts:['Preserves area but distorts shape','Distorts area more and more toward the poles','Shows true distances from the center point','Is an equal-area projection'],a:1,
+ why:'Mercator preserves direction and shape locally but exaggerates area at high latitudes — the core lesson that every projection distorts something.'},
+
+{u:2,title:'The City That Ate a Country',lat:13.756,lng:100.502,place:'Bangkok, Thailand',
+ clue:'I am more than 20 times larger than my country\'s second city — the government, the media, and the money all crowd onto my river delta.',
+ q:'A city that dominates its country this way is called a…',opts:['Megalopolis','Primate city','Edge city','World city'],a:1,
+ why:'Bangkok is a primate city: it violates the rank-size rule, concentrating population and services far beyond what rank-size would predict.'},
+{u:2,title:'Crowded Fields of the Delta',lat:23.81,lng:90.41,place:'Dhaka, Bangladesh',
+ clue:'My nation packs over 170 million people into a river delta smaller than Iowa — and when you divide people by ARABLE land, the crowding looks even more intense.',
+ q:'Population divided by arable (farmable) land is…',opts:['Arithmetic density','Physiological density','Agricultural density','Carrying capacity'],a:1,
+ why:'Bangladesh\'s physiological density is among the world\'s highest, revealing pressure on farmland that arithmetic density hides.'},
+{u:2,title:'Gateway of Twelve Million',lat:40.699,lng:-74.039,place:'Ellis Island, New York, USA',
+ clue:'Between 1892 and 1954, twelve million newcomers filed through my inspection hall, chasing jobs and joining relatives who had written home about them.',
+ q:'Migrants following relatives who moved earlier is called…',opts:['Forced migration','Chain migration','Counter-urbanization','Transhumance'],a:1,
+ why:'Ellis Island embodies pull factors and chain migration — letters and remittances from earlier migrants steered later ones to the same destinations.'},
+{u:2,title:'The Youngest Nation on Earth',lat:13.51,lng:2.11,place:'Niamey, Niger',
+ clue:'Nearly half my country\'s people are under 15, and women average more than six children — a population pyramid with a very wide base.',
+ q:'High birth rates with falling death rates and rapid growth mark which stage of the Demographic Transition Model?',opts:['Stage 1','Stage 2','Stage 4','Stage 5'],a:1,
+ why:'Niger fits Stage 2: death rates have fallen with modern medicine while birth rates remain high, producing rapid natural increase.'},
+
+{u:3,title:'The Hearth of the Hajj',lat:21.4225,lng:39.826,place:'Mecca, Saudi Arabia',
+ clue:'Every year millions of pilgrims converge on my sanctuary from every continent, then carry practices and ideas home — a religion diffusing from its hearth for 14 centuries.',
+ q:'Islam spreading outward as believers migrate and travel is primarily…',opts:['Contagious diffusion only','Relocation and expansion diffusion from a hearth','Stimulus diffusion','Reverse hierarchical diffusion'],a:1,
+ why:'Mecca is the hearth of a universalizing religion; the hajj and historic trade routes drove both relocation and expansion diffusion.'},
+{u:3,title:'An Island of French',lat:46.813,lng:-71.208,place:'Québec City, Canada',
+ clue:'Surrounded by an English-speaking continent, my province passed laws requiring French on signs and in schools to keep its language alive.',
+ q:'Laws protecting a regional language are best described as an effort to…',opts:['Create a lingua franca','Preserve cultural identity against assimilation','Promote cultural convergence','Establish an ethnic religion'],a:1,
+ why:'Québec\'s language policy is a deliberate defense of cultural identity — a response to the assimilating pull of a dominant surrounding culture.'},
+{u:3,title:'One City, Three Faiths',lat:31.778,lng:35.235,place:'Jerusalem',
+ clue:'Within one square kilometer of my old walls stand sites sacred to Judaism, Christianity, and Islam — sacred space so contested it shapes world politics.',
+ q:'Judaism, closely tied to one people and place, is classified as a(n)…',opts:['Universalizing religion','Ethnic religion','Syncretic religion','Animist religion'],a:1,
+ why:'Jerusalem shows both categories at once: ethnic Judaism rooted in place, and universalizing Christianity and Islam that seek converts worldwide.'},
+{u:3,title:'The Dream Factory',lat:34.092,lng:-118.329,place:'Hollywood, Los Angeles, USA',
+ clue:'From my studio lots, films and shows beam identical stories to billions of screens — spreading tastes in slang, fashion, and food at fiber-optic speed.',
+ q:'Compared with folk culture, popular culture typically diffuses…',opts:['Slowly, through migration alone','Rapidly, through media and hierarchical diffusion','Only within one ethnic group','Mainly through relocation diffusion'],a:1,
+ why:'Hollywood exports popular culture hierarchically through global media — fast and wide, in contrast with folk culture\'s slow relocation diffusion.'},
+
+{u:4,title:'The Orphaned Province',lat:54.71,lng:20.51,place:'Kaliningrad, Russia',
+ clue:'I belong to Russia, yet you cannot walk to me from Russia — Lithuania and Poland stand in between. I am a piece of a state cut off from the main body.',
+ q:'Territory separated from its state by other countries is a(n)…',opts:['Enclave','Exclave','Buffer state','Microstate'],a:1,
+ why:'Kaliningrad is Russia\'s exclave on the Baltic — separated territory, unlike an enclave, which is surrounded inside another state.'},
+{u:4,title:'The Line Nobody Crosses',lat:37.957,lng:126.677,place:'Korean DMZ (Panmunjom)',
+ clue:'Drawn near the 38th parallel with little regard for villages or valleys, my 250-km strip has divided one people into two states since 1953.',
+ q:'A straight-line border following latitude, ignoring cultural and physical features, is a…',opts:['Antecedent boundary','Geometric boundary','Consequent boundary','Relic boundary'],a:1,
+ why:'The division near the 38th parallel is a geometric (and superimposed) boundary — imposed by outside powers across a unified cultural region.'},
+{u:4,title:'Capital of the Pooled Sovereignty',lat:50.846,lng:4.352,place:'Brussels, Belgium',
+ clue:'From my glass offices, 27 states coordinate one market, one trade policy, and (for many) one currency — each giving up a slice of independence to gain scale.',
+ q:'When states join organizations like the EU, the main trade-off is…',opts:['Gaining territory but losing population','Giving up some sovereignty for collective benefits','Ending all national elections','Eliminating their own languages'],a:1,
+ why:'Brussels hosts the EU, the model supranational organization: members trade a portion of sovereignty for economic and political power.'},
+{u:4,title:'Two Hundred Miles of Argument',lat:10.7,lng:115.8,place:'Spratly Islands, South China Sea',
+ clue:'Six governments claim my scattered reefs — not for the sand, but for the fish, seabed energy, and the vast maritime zone each speck of land can generate.',
+ q:'Under UNCLOS, a coastal state controls resources in an Exclusive Economic Zone extending…',opts:['12 nautical miles','200 nautical miles','500 nautical miles','To the middle of the ocean'],a:1,
+ why:'EEZs reach 200 nautical miles, which is why tiny islets in the South China Sea trigger enormous overlapping claims.'},
+
+{u:5,title:'The Wheat That Changed Everything',lat:30.90,lng:75.85,place:'Punjab, India',
+ clue:'In the 1960s my fields swapped traditional seeds for high-yield dwarf wheat, plus tube wells, fertilizer, and machines. Famine forecasts failed — but my water table keeps falling.',
+ q:'The Green Revolution is best summarized as…',opts:['A return to organic subsistence farming','High-yield seeds with irrigation and chemical inputs spreading to developing countries','The collectivization of farms under socialism','The first domestication of plants'],a:1,
+ why:'Punjab was the showcase of the Green Revolution — soaring yields, but also debt, chemical dependence, and groundwater depletion.'},
+{u:5,title:'Where Farming Was Born',lat:36.5,lng:40.0,place:'The Fertile Crescent (SW Asia)',
+ clue:'Some 10,000 years ago, along rivers arcing from the Levant to Mesopotamia, people first domesticated wheat, barley, sheep, and goats — the First Agricultural Revolution.',
+ q:'Regions where plant/animal domestication first occurred independently are called agricultural…',opts:['Cores','Hearths','Belts','Peripheries'],a:1,
+ why:'The Fertile Crescent is the most famous agricultural hearth; others arose independently in East Asia, Mesoamerica, and beyond.'},
+{u:5,title:'A Staircase of Rice',lat:-7.55,lng:110.2,place:'Central Java, Indonesia',
+ clue:'On my crowded volcanic island, families sculpt hillsides into flooded steps and coax two or three rice harvests a year from tiny plots using abundant labor.',
+ q:'Wet-rice farming on small plots with heavy labor input is…',opts:['Extensive commercial grain farming','Intensive subsistence agriculture','Pastoral nomadism','Plantation agriculture'],a:1,
+ why:'Java\'s terraced paddies typify intensive subsistence agriculture — maximum output per hectare where land is scarce and labor plentiful.'},
+{u:5,title:'An Ocean of Corn',lat:41.59,lng:-93.62,place:'The Corn Belt (Des Moines, Iowa, USA)',
+ clue:'GPS-guided combines, patented seed, futures contracts, and grain elevators link my flat fields to feedlots and ethanol plants worldwide. Few farmers, giant farms.',
+ q:'Large-scale, mechanized, market-oriented farming integrated with corporations is called…',opts:['Shifting cultivation','Agribusiness / commercial agriculture','Market gardening','Subsistence agriculture'],a:1,
+ why:'The Corn Belt exemplifies agribusiness: capital-intensive commercial grain farming embedded in a global commodity chain.'},
+
+{u:6,title:'A Capital Drawn From Nothing',lat:-15.794,lng:-47.882,place:'Brasília, Brazil',
+ clue:'In 1960 my airplane-shaped street plan replaced empty savanna. My country moved its government inland from the coast on purpose — to pull growth toward the interior.',
+ q:'A capital relocated to spur development of a neglected region is a…',opts:['Primate city','Forward capital','Colonial city','Edge city'],a:1,
+ why:'Brasília is the classic forward capital, and its master-planned design makes it a landmark of 20th-century urban planning.'},
+{u:6,title:'Spine and Periphery',lat:19.432,lng:-99.133,place:'Mexico City, Mexico',
+ clue:'From my colonial plaza, an elegant commercial spine runs outward — while on my far edges, self-built neighborhoods climb the hillsides without water lines or titles.',
+ q:'In the Latin American (Griffin–Ford) city model, the outermost ring typically contains…',opts:['The central business district','Squatter settlements / informal housing','Gated railroad suburbs','Heavy industry only'],a:1,
+ why:'Mexico City matches Griffin–Ford: a CBD and elite spine at the center, with disamenity zones and informal settlements at the periphery.'},
+{u:6,title:'The Bus That Thinks It\'s a Train',lat:-25.429,lng:-49.271,place:'Curitiba, Brazil',
+ clue:'Since the 1970s I have bent growth along dense corridors served by tube-station buses, traded flood zones for parks, and become planners\' favorite field trip.',
+ q:'Designing compact, transit-focused development to curb sprawl is called…',opts:['Redlining','Smart growth / New Urbanism','Filtering','Blockbusting'],a:1,
+ why:'Curitiba pioneered bus rapid transit and corridor zoning — a global reference point for smart growth and sustainable urban design.'},
+{u:6,title:'Rings Around the Loop',lat:41.878,lng:-87.63,place:'Chicago, Illinois, USA',
+ clue:'Sociologists watching my growth in the 1920s sketched the first great model of the city: a business core ringed by zones of transition, workers\' homes, and commuter suburbs.',
+ q:'The model describing a city as rings expanding from a central business district is the…',opts:['Sector model','Concentric zone (Burgess) model','Multiple nuclei model','Galactic city model'],a:1,
+ why:'Burgess built the concentric zone model from Chicago — the starting point for comparing sector, multiple-nuclei, and galactic models.'},
+
+{u:7,title:'The Fishing Village Experiment',lat:22.543,lng:114.06,place:'Shenzhen, China',
+ clue:'In 1980 I was a town of 30,000 across the border from Hong Kong. Then my government exempted me from normal rules to lure foreign factories. Today: 17+ million people.',
+ q:'An area with special tax and trade rules designed to attract foreign investment is a…',opts:['Greenbelt','Special Economic Zone','Buffer zone','Enterprise census tract'],a:1,
+ why:'Shenzhen was China\'s first Special Economic Zone — the flagship of export-led industrialization and the new international division of labor.'},
+{u:7,title:'Where the Smoke First Rose',lat:53.483,lng:-2.244,place:'Manchester, England, UK',
+ clue:'Coal seams, damp air good for spinning cotton, canals to the sea, and new steam engines made my mills the shock city of the 1800s — the hearth of a revolution in making things.',
+ q:'The Industrial Revolution began in Great Britain partly because of…',opts:['Its tropical climate','Abundant coal, capital, and transport networks','Its lack of colonies','Government bans on new technology'],a:1,
+ why:'Manchester shows Weber-style locational logic: energy (coal), raw material access, labor, and canals concentrated industry there first.'},
+{u:7,title:'The Back Office of the World',lat:12.972,lng:77.594,place:'Bengaluru (Bangalore), India',
+ clue:'English-speaking engineers, technical universities, and fiber-optic cables let my firms handle software, call centers, and design work for companies twelve time zones away.',
+ q:'Moving service and office work to lower-cost countries is called…',opts:['Import substitution','Outsourcing / offshoring of services','Bulk-gaining manufacturing','Primary sector employment'],a:1,
+ why:'Bengaluru anchors the global outsourcing of quaternary and tertiary work — footloose industries following talent and connectivity, not coal.'},
+{u:7,title:'Factories on the Border',lat:31.69,lng:-106.42,place:'Ciudad Juárez, Mexico',
+ clue:'Rows of foreign-owned assembly plants line my side of a famous border, importing parts duty-free and exporting finished TVs, wire harnesses, and appliances north.',
+ q:'These border assembly plants are known as…',opts:['Kibbutzim','Maquiladoras','Entrepôts','Cottage industries'],a:1,
+ why:'Juárez\'s maquiladoras grew under border-industrialization and free-trade policies — labor-oriented manufacturing serving the U.S. market.'}
+];
+
+/* ---------------- Config ---------------- */
+const ROUND_SECS = 90, REVEAL_SECS = 22;
+const COLORS = [['#C4553B','Vermilion'],['#2F7A6B','Verdigris'],['#3B6FA0','Prussian blue'],['#B98A2F','Brass'],['#7A4E8C','Tyrian purple'],['#4E7A3B','Cartouche green'],['#A0522D','Sienna'],['#20707E','Peacock'],['#8C3B5E','Cochineal'],['#5A6A70','Graphite']];
+const TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+const TILE_ATTR = 'Tiles © Esri — Esri, HERE, Garmin, FAO, NOAA, USGS';
+const CITIES_QUERY = 'https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/0/query';
+
+/* ---------------- Storage layer (shared, with solo fallback) ---------------- */
+const mem = {};
+let soloMode = !(window.storage && window.storage.get);
+async function sGet(k){ if(soloMode){return mem[k]!==undefined?{key:k,value:mem[k]}:null;}
+  try{ return await window.storage.get(k,true); }catch(e){ return null; } }
+async function sSet(k,v){ if(soloMode){mem[k]=v;return {key:k};}
+  try{ return await window.storage.set(k,v,true); }catch(e){ console.error('set fail',e); return null; } }
+async function sList(pfx){ if(soloMode){return {keys:Object.keys(mem).filter(k=>k.startsWith(pfx))};}
+  try{ return await window.storage.list(pfx,true) || {keys:[]}; }catch(e){ return {keys:[]}; } }
+
+/* ---------------- App state ---------------- */
+let role=null, room=null, pid=null, myName=null, myColor=null, hostPlays=false;
+let gstate=null;              // latest shared game state
+let playersCache={};          // host: pid -> player record
+let pollTimer=null, hostTimer=null, clockTimer=null;
+let map=null, map2=null, myMarker=null, mySel={lat:null,lng:null,mcq:null,locked:false};
+let renderedKey='';           // avoid re-rendering same phase/round
+
+const $=s=>document.querySelector(s);
+const stateKey=()=>`ti:${room}:state`;
+const pKey=id=>`ti:${room}:p:${id}`;
+const rnd=n=>Math.floor(Math.random()*n);
+const now=()=>Date.now();
+
+function showScreen(id){
+  ['scr-home','scr-lobby','scr-wait','scr-round','scr-reveal','scr-final'].forEach(s=>$('#'+s).classList.add('hidden'));
+  $('#'+id).classList.remove('hidden');
+}
+function setHeader(){
+  const hr=$('#hdr-room'), hd=$('#hdr-round');
+  if(room){hr.textContent='ROOM '+room;hr.classList.remove('hidden');}else hr.classList.add('hidden');
+  if(gstate&&gstate.phase!=='lobby'&&gstate.phase!=='final'){hd.textContent=`DISPATCH ${gstate.round} / ${gstate.order.length}`;hd.classList.remove('hidden');}
+  else hd.classList.add('hidden');
+}
+function haversine(a,b,c,d){const R=6371,t=x=>x*Math.PI/180;
+  const h=Math.sin(t(c-a)/2)**2+Math.cos(t(a))*Math.cos(t(c))*Math.sin(t(d-b)/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));}
+function distPts(d){ if(d<=100)return 1000; if(d>=4000)return 0; return Math.round(1000*(1-(d-100)/3900)); }
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ---------------- Home ---------------- */
+(function initHome(){
+  const sel=$('#join-color');
+  COLORS.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c[1];sel.appendChild(o);});
+  if(soloMode)$('#storage-banner').classList.remove('hidden');
+  $('#btn-host').addEventListener('click',hostGame);
+  $('#btn-join').addEventListener('click',joinGame);
+  $('#btn-again').addEventListener('click',()=>location.reload());
+})();
+
+function buildOrder(unitFilter,nRounds){
+  let pool=QBANK.map((q,i)=>i).filter(i=>unitFilter===0||QBANK[i].u===unitFilter);
+  for(let i=pool.length-1;i>0;i--){const j=rnd(i+1);[pool[i],pool[j]]=[pool[j],pool[i]];}
+  return pool.slice(0,Math.min(nRounds,pool.length));
+}
+
+async function hostGame(){
+  role='host';
+  const letters='ABCDEFGHJKMNPQRSTUVWXYZ';
+  room=Array.from({length:4},()=>letters[rnd(letters.length)]).join('');
+  const nRounds=+$('#set-rounds').value, unit=+$('#set-unit').value;
+  gstate={phase:'lobby',round:0,order:buildOrder(unit,nRounds),endsAt:0,revealEndsAt:0,
+          results:{},totals:{},roster:[],createdAt:now()};
+  await sSet(stateKey(),JSON.stringify(gstate));
+  if(soloMode){ // no shared storage: host plays their own expedition
+    hostPlays=true; pid='solo'; myName='Solo Cartographer'; myColor=COLORS[3][0];
+    await sSet(pKey(pid),JSON.stringify({name:myName,color:myColor,joinedAt:now(),answers:{}}));
+  }
+  $('#lobby-code').textContent=room;
+  setHeader(); showScreen('scr-lobby');
+  startHostLoop(); startPolling();
+}
+
+async function joinGame(){
+  const code=$('#join-code').value.trim().toUpperCase();
+  const name=$('#join-name').value.trim();
+  const err=$('#join-err'); err.textContent='';
+  if(code.length!==4){err.textContent='Enter the 4-letter room code.';return;}
+  if(!name){err.textContent='Sign the ledger with a name.';return;}
+  const st=await sGet(`ti:${code}:state`);
+  if(!st||!st.value){err.textContent='No expedition found with that code. Check the board.';return;}
+  role='player'; room=code; myName=name.slice(0,16);
+  myColor=COLORS[+$('#join-color').value][0];
+  pid=Math.random().toString(36).slice(2,8);
+  await sSet(pKey(pid),JSON.stringify({name:myName,color:myColor,joinedAt:now(),answers:{}}));
+  gstate=JSON.parse(st.value);
+  setHeader(); routePlayer(); startPolling();
+}
+
+/* ---------------- Polling ---------------- */
+function startPolling(){
+  clearInterval(pollTimer);
+  pollTimer=setInterval(async()=>{
+    if(role==='player'){
+      const st=await sGet(stateKey());
+      if(st&&st.value){gstate=JSON.parse(st.value);routePlayer();}
+    }else if(role==='host'){
+      await refreshPlayers();
+      if(gstate&&gstate.phase==='lobby'){
+        const roster=Object.entries(playersCache).map(([id,p])=>({id,name:p.name,color:p.color}));
+        if(JSON.stringify(roster)!==JSON.stringify(gstate.roster)){gstate.roster=roster;await saveState();}
+      }
+      routeHost();
+    }
+  }, role==='host'?3000:2500);
+}
+async function refreshPlayers(){
+  const l=await sList(`ti:${room}:p:`);
+  const ids=(l.keys||[]).map(k=>k.split(':').pop());
+  for(const id of ids){
+    const r=await sGet(pKey(id));
+    if(r&&r.value){try{playersCache[id]=JSON.parse(r.value);}catch(e){}}
+  }
+  for(const id of Object.keys(playersCache)) if(!ids.includes(id)) delete playersCache[id];
+}
+async function saveState(){ await sSet(stateKey(),JSON.stringify(gstate)); }
+
+/* ---------------- Host game loop ---------------- */
+function startHostLoop(){
+  clearInterval(hostTimer);
+  hostTimer=setInterval(async()=>{
+    if(!gstate)return;
+    if(gstate.phase==='round'){
+      const ids=Object.keys(playersCache);
+      const done=ids.filter(id=>playersCache[id].answers&&playersCache[id].answers[gstate.round]).length;
+      $('#hs-sub').textContent=done; $('#hs-total').textContent=ids.length;
+      if(now()>=gstate.endsAt || (ids.length>0&&done>=ids.length)) await endRound();
+    }else if(gstate.phase==='reveal'&&gstate.autoAdvance&&now()>=gstate.revealEndsAt){
+      await nextRound();
+    }
+  },1000);
+}
+async function startRound(r){
+  mySel={lat:null,lng:null,mcq:null,locked:false};
+  gstate.phase='round'; gstate.round=r; gstate.endsAt=now()+ROUND_SECS*1000;
+  gstate.autoAdvance=false;
+  await saveState(); renderedKey=''; routeHost();
+}
+async function endRound(){
+  if(gstate.phase!=='round')return;
+  gstate.phase='scoring'; // guard against double-fire
+  await refreshPlayers();
+  const q=QBANK[gstate.order[gstate.round-1]];
+  const res={};
+  for(const [id,p] of Object.entries(playersCache)){
+    const a=(p.answers||{})[gstate.round];
+    let d=null,pts=0,mcqOk=false,bonus=0;
+    if(a&&a.lat!==null&&a.lat!==undefined){
+      d=Math.round(haversine(a.lat,a.lng,q.lat,q.lng));
+      pts=distPts(d);
+      if(d<=1500&&a.remain>0) bonus=Math.round(200*Math.min(1,a.remain/ROUND_SECS));
+    }
+    if(a&&a.mcq===q.a) mcqOk=true;
+    const total=pts+bonus+(mcqOk?500:0);
+    gstate.totals[id]=(gstate.totals[id]||0)+total;
+    res[id]={name:p.name,color:p.color,lat:a?a.lat:null,lng:a?a.lng:null,d,pts,bonus,mcqOk,mcq:a?a.mcq:null,total};
+  }
+  gstate.results[gstate.round]=res;
+  gstate.roster=Object.entries(playersCache).map(([id,p])=>({id,name:p.name,color:p.color}));
+  gstate.phase='reveal';
+  gstate.revealEndsAt=now()+REVEAL_SECS*1000;
+  await saveState(); renderedKey=''; routeHost();
+  // flavor: ask ArcGIS World Cities for the nearest charted settlement
+  fetchNearestCity(q).catch(()=>{});
+}
+async function nextRound(){
+  if(gstate.round>=gstate.order.length){gstate.phase='final';await saveState();renderedKey='';routeHost();}
+  else await startRound(gstate.round+1);
+}
+async function fetchNearestCity(q){
+  try{
+    const p=new URLSearchParams({f:'json',geometry:JSON.stringify({x:q.lng,y:q.lat,spatialReference:{wkid:4326}}),
+      geometryType:'esriGeometryPoint',inSR:'4326',distance:'400000',units:'esriSRUnit_Meter',
+      spatialRel:'esriSpatialRelIntersects',outFields:'CITY_NAME,CNTRY_NAME',returnGeometry:'false',resultRecordCount:'1'});
+    const r=await fetch(CITIES_QUERY+'?'+p.toString());
+    const j=await r.json();
+    if(j.features&&j.features.length){
+      const f=j.features[0].attributes;
+      gstate.nearest=`Nearest charted settlement in the ArcGIS gazetteer: ${f.CITY_NAME}, ${f.CNTRY_NAME}`;
+      await saveState();
+      const el=$('#v-nearest'); if(el&&gstate.phase==='reveal')el.textContent=gstate.nearest;
+    }
+  }catch(e){/* offline or blocked — cosmetic only */}
+}
+
+/* ---------------- Routing / rendering ---------------- */
+function routeHost(){
+  setHeader();
+  const key=gstate.phase+'-'+gstate.round;
+  if(gstate.phase==='lobby'){renderLobby();return;}
+  if(key===renderedKey&&gstate.phase!=='reveal'){tickClock();return;}
+  if(gstate.phase==='round'){if(key!==renderedKey){renderedKey=key;renderRound(!hostPlays);}tickClock();}
+  else if(gstate.phase==='reveal'){if(key!==renderedKey){renderedKey=key;renderReveal(true);}}
+  else if(gstate.phase==='final'){if(key!==renderedKey){renderedKey=key;renderFinal();}}
+}
+function routePlayer(){
+  setHeader();
+  const key=gstate.phase+'-'+gstate.round;
+  if(gstate.phase==='lobby'){renderWait();return;}
+  if(gstate.phase==='round'){
+    if(key!==renderedKey){renderedKey=key;mySel={lat:null,lng:null,mcq:null,locked:false};renderRound(false);}
+    tickClock();
+  }else if(gstate.phase==='reveal'||gstate.phase==='scoring'){
+    if(gstate.phase==='reveal'&&key!==renderedKey){renderedKey=key;renderReveal(false);}
+  }else if(gstate.phase==='final'){if(key!==renderedKey){renderedKey=key;renderFinal();}}
+}
+
+function renderLobby(){
+  showScreen('scr-lobby');
+  const ids=Object.keys(playersCache);
+  $('#lobby-count').textContent=ids.length+' signed in';
+  $('#btn-start').disabled=ids.length===0;
+  $('#lobby-roster').innerHTML=ids.map(id=>{const p=playersCache[id];
+    return `<span class="chip"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}</span>`;}).join('')||'<span class="sub">Waiting for cartographers…</span>';
+}
+$('#btn-start').addEventListener('click',()=>startRound(1));
+$('#btn-endround').addEventListener('click',()=>{gstate.endsAt=now();});
+$('#btn-next').addEventListener('click',nextRound);
+
+function renderWait(){
+  showScreen('scr-wait');
+  $('#wait-roster').innerHTML=(gstate.roster||[]).map(p=>`<span class="chip"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}</span>`).join('');
+}
+
+/* ---------------- Round ---------------- */
+function currentQ(){return QBANK[gstate.order[gstate.round-1]];}
+function renderRound(isHost){
+  showScreen('scr-round');
+  const q=currentQ();
+  $('#r-unit').textContent=`Unit ${q.u} · ${UNITS[q.u]}`;
+  $('#r-title').textContent=`Dispatch ${gstate.round}: ${q.title}`;
+  $('#r-clue').textContent=q.clue;
+  $('#r-coords').textContent='PIN — not yet placed';
+  $('#r-status').textContent=isHost?'Cartographers are surveying…':'Drop a pin, answer the question, then lock in.';
+  $('#host-live').classList.toggle('hidden',!isHost);
+  $('#btn-lock').classList.toggle('hidden',isHost);
+  $('#btn-lock').disabled=true; $('#btn-lock').textContent='Lock in survey';
+  // MCQ
+  const box=$('#r-mcq');
+  if(isHost){box.innerHTML=`<p class="q" style="font-weight:700">${esc(q.q)}</p><p class="sub">Answer choices are on the cartographers' screens.</p>`;}
+  else{
+    box.innerHTML=`<p class="q">${esc(q.q)}</p>`+q.opts.map((o,i)=>`<button class="opt" data-i="${i}">${'ABCD'[i]}. ${esc(o)}</button>`).join('');
+    box.querySelectorAll('.opt').forEach(b=>b.addEventListener('click',()=>{
+      if(mySel.locked)return;
+      box.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel'));
+      b.classList.add('sel'); mySel.mcq=+b.dataset.i; updateLock();
+    }));
+  }
+  // map
+  if(map){map.remove();map=null;} myMarker=null;
+  map=L.map('map',{worldCopyJump:true,minZoom:2}).setView([20,10],2);
+  L.tileLayer(TILE_URL,{attribution:TILE_ATTR,maxZoom:12}).addTo(map);
+  if(!isHost){
+    map.on('click',e=>{
+      if(mySel.locked)return;
+      mySel.lat=+e.latlng.lat.toFixed(4); mySel.lng=+(((e.latlng.lng+540)%360)-180).toFixed(4);
+      $('#r-coords').textContent=`PIN — ${fmtCoord(mySel.lat,mySel.lng)}`;
+      if(myMarker)myMarker.setLatLng(e.latlng);
+      else myMarker=L.marker(e.latlng,{icon:pinIcon(myColor)}).addTo(map);
+      updateLock();
+    });
+  }
+}
+function fmtCoord(lat,lng){return `${Math.abs(lat).toFixed(2)}° ${lat>=0?'N':'S'}, ${Math.abs(lng).toFixed(2)}° ${lng>=0?'E':'W'}`;}
+function pinIcon(color,target){return L.divIcon({className:'',html:`<div class="pin ${target?'target':''}" style="background:${color||'#C4553B'}"></div>`,iconSize:[20,20],iconAnchor:target?[10,10]:[3,18]});}
+function updateLock(){$('#btn-lock').disabled=!(mySel.lat!==null&&mySel.mcq!==null)||mySel.locked;}
+$('#btn-lock').addEventListener('click',async()=>{
+  if(mySel.locked)return;
+  mySel.locked=true;
+  $('#btn-lock').disabled=true;$('#btn-lock').textContent='Survey locked ✓';
+  $('#r-status').textContent='Locked in. Waiting for the rest of the guild…';
+  document.querySelectorAll('#r-mcq .opt').forEach(b=>b.disabled=true);
+  const remain=Math.max(0,Math.round((gstate.endsAt-now())/1000));
+  const rec=await sGet(pKey(pid));
+  const me=rec&&rec.value?JSON.parse(rec.value):{name:myName,color:myColor,answers:{}};
+  me.answers=me.answers||{};
+  me.answers[gstate.round]={lat:mySel.lat,lng:mySel.lng,mcq:mySel.mcq,remain};
+  await sSet(pKey(pid),JSON.stringify(me));
+});
+
+/* compass countdown */
+function tickClock(){
+  clearInterval(clockTimer);
+  const C=2*Math.PI*42, sweep=$('#sweep');
+  sweep.style.strokeDasharray=C;
+  const step=()=>{
+    if(!gstate||gstate.phase!=='round'){clearInterval(clockTimer);return;}
+    const remain=Math.max(0,(gstate.endsAt-now())/1000);
+    $('#clock').textContent=Math.ceil(remain);
+    sweep.style.strokeDashoffset=C*(1-remain/ROUND_SECS);
+    $('#compass').classList.toggle('low',remain<=15);
+    if(remain<=0)clearInterval(clockTimer);
+  };
+  step(); clockTimer=setInterval(step,1000);
+}
+
+/* ---------------- Reveal ---------------- */
+function renderReveal(isHost){
+  showScreen('scr-reveal');
+  const q=currentQ(), res=gstate.results[gstate.round]||{};
+  $('#v-unit').textContent=`Unit ${q.u} · ${UNITS[q.u]}`;
+  $('#v-place').textContent=q.place;
+  $('#v-nearest').textContent=gstate.nearest||'';
+  $('#v-explain').innerHTML=`<b>${esc(q.q)}</b><br/>Answer: <b>${esc(q.opts[q.a])}</b>. ${esc(q.why)}`;
+  $('#v-hostbtns').classList.toggle('hidden',!isHost);
+  $('#v-waitnote').classList.toggle('hidden',isHost);
+  // personal result
+  const mineBox=$('#v-mine'); mineBox.innerHTML='';
+  if(pid){
+    const m=res[pid];
+    if(m&&m.lat!==null){
+      mineBox.innerHTML=`<div class="score-pop">+${m.total} pts</div>
+        <p class="sub">Pin ${m.d} km off (${m.pts} pts) · speed bonus ${m.bonus} · concept ${m.mcqOk?'✓ +500':'✗ +0'}</p>`;
+    }else mineBox.innerHTML=`<p class="sub">No survey locked this round — the compass waits for no one.</p>`;
+  }
+  // leaderboard
+  const rows=Object.entries(gstate.totals).map(([id,t])=>{
+    const r=res[id]||{}; const meta=(gstate.roster||[]).find(p=>p.id===id)||{name:r.name||'—',color:r.color||'#999'};
+    return {id,name:meta.name,color:meta.color,rt:r.total||0,t};
+  }).sort((a,b)=>b.t-a.t);
+  $('#v-lb').innerHTML=rows.map((r,i)=>`<tr class="${r.id===pid?'me':''}"><td class="num">${i+1}</td>
+    <td><span class="dot" style="background:${r.color}"></span> ${esc(r.name)}</td>
+    <td class="num">+${r.rt}</td><td class="num">${r.t}</td></tr>`).join('');
+  // reveal map
+  if(map2){map2.remove();map2=null;}
+  map2=L.map('map2',{worldCopyJump:true,minZoom:2}).setView([q.lat,q.lng],4);
+  L.tileLayer(TILE_URL,{attribution:TILE_ATTR,maxZoom:12}).addTo(map2);
+  L.marker([q.lat,q.lng],{icon:pinIcon(null,true)}).addTo(map2).bindPopup(`<b>${esc(q.place)}</b>`).openPopup();
+  const pts=[[q.lat,q.lng]];
+  Object.values(res).forEach(r=>{
+    if(r.lat===null||r.lat===undefined)return;
+    L.marker([r.lat,r.lng],{icon:pinIcon(r.color)}).addTo(map2).bindPopup(`${esc(r.name)} — ${r.d} km`);
+    L.polyline([[r.lat,r.lng],[q.lat,q.lng]],{color:r.color,weight:1.5,dashArray:'4 5',opacity:.8}).addTo(map2);
+    pts.push([r.lat,r.lng]);
+  });
+  if(pts.length>1)map2.fitBounds(pts,{padding:[36,36],maxZoom:6});
+}
+
+/* ---------------- Final ---------------- */
+function renderFinal(){
+  showScreen('scr-final');
+  const rows=Object.entries(gstate.totals).map(([id,t])=>{
+    const meta=(gstate.roster||[]).find(p=>p.id===id)||{name:'—',color:'#999'};
+    return {id,name:meta.name,color:meta.color,t};
+  }).sort((a,b)=>b.t-a.t);
+  const pod=$('#podium'); pod.innerHTML='';
+  const spots=[[1,'p2'],[0,'p1'],[2,'p3']];
+  spots.forEach(([i,cls])=>{
+    if(!rows[i])return;
+    pod.insertAdjacentHTML('beforeend',`<div class="col ${cls}">
+      <p style="margin-bottom:6px"><span class="dot" style="background:${rows[i].color}"></span> <b>${esc(rows[i].name)}</b><br/><span class="sub">${rows[i].t} pts</span></p>
+      <div class="block">${i+1}</div></div>`);
+  });
+  $('#f-lb').innerHTML=rows.map((r,i)=>`<tr class="${r.id===pid?'me':''}"><td class="num">${i+1}</td>
+    <td><span class="dot" style="background:${r.color}"></span> ${esc(r.name)}</td><td class="num">${r.t}</td></tr>`).join('');
+}
+
+/* Solo practice mode: when shared storage is unavailable, hosting a room
+   registers the host as the sole player (hostPlays=true) and the full
+   host loop runs in the same tab, so the game is still playable alone. */
+</script>
+</body>
+</html>
